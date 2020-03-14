@@ -1,11 +1,29 @@
 // Exfiltrate.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include <Windows.h>
 #include <iostream>
 
 int main()
 {
-    std::cout << "Hello World!\n";
+	HANDLE std = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (std == INVALID_HANDLE_VALUE) {
+		std::cout << "Can't enable terminal colors. A lot of stuff probably won't make sense :(\n";
+		goto skip;
+	}
+	DWORD mode;
+	if (!GetConsoleMode(std, &mode)) {
+		std::cout << "Can't enable terminal colors. A lot of stuff probably won't make sense :(\n";
+		goto skip;
+	}
+	mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING; // enable VT100 control characters
+	if (!SetConsoleMode(std, mode)) {
+		std::cout << "Can't enable terminal colors. A lot of stuff probably won't make sense :(\n";
+	}
+
+skip:
+	std::cout << "Hello \x1b[31mWorld\x1b[0m!\n";
+	system("pause");
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
