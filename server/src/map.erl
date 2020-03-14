@@ -23,6 +23,7 @@ generate_map() ->
         <<"W..............W">>,
         <<"W.S............W">>,
         <<"W..............W">>,
+        <<"W..............W">>,
         <<"WWWWWWWWWWWWWWWW">>
     ], lasers = [
         #laser{x = 0, y = 9, direction = right}
