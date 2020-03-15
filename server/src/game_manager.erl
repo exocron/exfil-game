@@ -10,12 +10,13 @@
 -module(game_manager).
 -behaviour(gen_server).
 
--export([start_link/0, add_game/0, find_game/1]).
--export([init/1, handle_call/3, handle_info/2]).
+-export([start_link/0, add_game/0, add_game/2, find_game/1]).
+-export([init/1, handle_call/3, handle_info/2, terminate/2]).
 
 start_link() -> gen_server:start_link({local, game_manager}, game_manager, [], []).
 
 add_game() -> gen_server:call(game_manager, add_game).
+add_game(Game, Key) -> gen_server:call(game_manager, {add_game, Game, Key}).
 find_game(Key) -> gen_server:call(game_manager, {find_game, Key}).
 
 %% Server
@@ -26,7 +27,10 @@ init(_) ->
     {ok, []}.
 
 handle_call(add_game, From, []) ->
-    maybe_add_game(From, game:new()).
+    maybe_add_game(From, game:new());
+
+handle_call({add_game, Game, Key}, _, []) ->
+    maybe_insert_game(Key, Game, [], ets:insert_new(game_tbl, {Key, Game}), ets:insert_new(game_rev, {Game, Key})).
 
 handle_info({'DOWN', _, process, Pid, _}, []) ->
     case ets:lookup(game_rev, Pid) of
@@ -36,6 +40,9 @@ handle_info({'DOWN', _, process, Pid, _}, []) ->
         _ -> []
     end,
     {noreply, []}.
+
+terminate(_, _) ->
+    ets:foldl(fun({Pid, _}, _) -> game:notify_manager_shutdown(Pid) end, [], game_rev).
 
 %% Implementation
 
@@ -47,6 +54,7 @@ maybe_add_game(_, Result) ->
 
 maybe_add_client(Pid, {ok, Ref}) ->
     Key = keygen:generate_key(),
+    ok = game:set_key(Pid, Key),
     maybe_insert_game(Key, Pid, Ref, ets:insert_new(game_tbl, {Key, Pid}), ets:insert_new(game_rev, {Pid, Key}));
 
 maybe_add_client(Pid, Result) ->

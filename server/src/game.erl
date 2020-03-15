@@ -10,10 +10,9 @@
 -module(game).
 -behaviour(gen_server).
 
--export([new/0, delete/1, add_client/2, reconnect_client/2,
-    client_select_role/2, client_commit_role/2]).
-
--export([init/1, handle_call/3, handle_info/2]).
+-export([new/0, delete/1, set_key/2, get_key/1, notify_manager_shutdown/1]).
+-export([add_client/2, reconnect_client/2, client_select_role/2, client_commit_role/2]).
+-export([init/1, handle_cast/2, handle_call/3, handle_info/2]).
 
 -record(clientinfo, {
     pid,
@@ -23,6 +22,7 @@
 }).
 
 -record(gamestate, {
+    key = nil,
     client1 = nil,
     client2 = nil,
     state = pregame
@@ -30,6 +30,10 @@
 
 new() -> gen_server:start(game, [], []).
 delete(Pid) -> gen_server:stop(Pid).
+
+set_key(Pid, Key) -> gen_server:call(Pid, {set_key, Key}).
+get_key(Pid) -> gen_server:call(Pid, get_key).
+notify_manager_shutdown(Pid) -> gen_server:cast(Pid, notify_manager_shutdown).
 
 add_client(Pid, Client) -> gen_server:call(Pid, {add_client, Client}).
 reconnect_client(Pid, Ref) -> gen_server:call(Pid, {reconnect_client, Ref}).
@@ -43,6 +47,16 @@ hacker_configure_laser(<<"las0">>, false, 0) -> self(), ok.
 %% Server
 
 init(_) -> {ok, #gamestate{}}.
+
+handle_cast(notify_manager_shutdown, State) ->
+    erlang:send_after(5000, self(), connect_manager),
+    {noreply, State}.
+
+handle_call({set_key, Key}, _, State) ->
+    {reply, ok, State#gamestate{key = Key}};
+
+handle_call(get_key, _, State) ->
+    {reply, {ok, State#gamestate.key}, State};
 
 handle_call({add_client, Pid}, _, State) ->
     handle_duplicate_clients(State, Pid);
@@ -73,6 +87,14 @@ handle_call_client(Client, {client_commit_role, Bool}, State) when State#gamesta
 
 handle_call_client(_, {client_commit_role, _}, State) ->
     {reply, {error, game_started}, State}.
+
+handle_info(connect_manager, State) ->
+    case game_manager:add_game(self(), State#gamestate.key) of
+        {ok, _, _, _} -> {noreply, State};
+        _ ->
+            % TODO: notify clients that game is ending
+            {stop, insert_game, State}
+    end;
 
 handle_info(maybe_start_game, State) ->
     {noreply, maybe_start_game(State)}.
