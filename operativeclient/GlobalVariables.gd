@@ -1,29 +1,37 @@
 extends Node
 
 var playerName: String
-var _ws: WebSocketClient = null
+var _ws: WebSocketClient = WebSocketClient.new()
+var _token: String = ""
+var _code: String = ""
 
-func start_network():
-	_ws = WebSocketClient.new()
+func _ready():
 	_ws.connect("connection_closed", self, "_on_ws_closed")
 	_ws.connect("connection_error", self, "_on_ws_closed")
 	_ws.connect("connection_established", self, "_on_ws_established")
 	_ws.connect("data_received", self, "_on_ws_data_received")
-	_ws.connect_to_url("ws://localhost:8080/new")
+	ws_connect()
+
+func ws_connect():
+	if _code:
+		_ws.connect_to_url("ws://127.0.0.1:8080/join")
+	else:
+		_ws.connect_to_url("ws://127.0.0.1:8080/new")
 
 func _on_ws_closed(was_clean = false):
-	pass
+	print("Closed")
 
 func _on_ws_established(proto = ""):
-	pass
+	print("Established")
 
 func _on_ws_data_received():
-	pass
+	var data = _ws.get_peer(1).get_packet().get_string_from_utf8()
+	data = JSON.parse(data).get_result()
+	if data.has("code"):
+		_code = data["code"]
+	if data.has("token"):
+		_token = data["token"]
+	print("Received data: ", str(data))
 
 func _process(delta):
-	if _ws != null:
-		var status = _ws.get_connection_status()
-		if status == WebSocketClient.CONNECTION_CONNECTING or status == WebSocketClient.CONNECTION_CONNECTING:
-			_ws.poll()
-		else:
-			_ws.connect_to_url("ws://localhost:8080/new")
+	_ws.poll()

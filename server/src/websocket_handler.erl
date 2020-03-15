@@ -11,7 +11,10 @@ init(Req, join) ->
 
 websocket_init(new) ->
     io:format("WebSocket Init New~n"),
-    {ok, new};
+    {ok, Key, Pid, Ref} = game_manager:add_game(),
+    {ok, Cookie} = cookiejar:get_cookie(Ref),
+    JSON = jiffy:encode(#{code => Key, token => Cookie}),
+    {[{text, JSON}], {game, Pid}};
 
 websocket_init(join) ->
     io:format("WebSocket Init Join~n"),
