@@ -14,6 +14,7 @@ var remoteName: String setget ,_remoteName_get
 var role: String setget _role_set, _role_get
 
 signal peer_role_changed(peer_role)
+signal peer_ready(ready)
 
 func _ready():
 	ws_connect()
@@ -62,9 +63,14 @@ func _dispatchActions(action, data):
 		_remoteName = data["name"]
 	if action == "rrolechange" and _state == "role_select":
 		emit_signal("peer_role_changed", data["role"])
+	if action == "rready" and _state == "role_select":
+		emit_signal("peer_ready", data["ready"])
 	if action == "statechange" and data["newstate"] == "role_select":
 		_state = "role_select"
 		get_tree().change_scene("res://role_menu.tscn")
+	if action == "statechange" and data["newstate"] == "game_start":
+		_state = "game_start"
+		get_tree().change_scene("res://testlevel.tscn")
 
 func _process(delta):
 	_ws.poll()
@@ -98,3 +104,8 @@ func _role_set(newrole):
 			var data = {"action": "setrole", "role": newrole}
 			data = JSON.print(data)
 			_ws.get_peer(1).put_packet(data.to_utf8())
+
+func signal_ready():
+	var data = {"action": "ready", "ready": true}
+	data = JSON.print(data)
+	_ws.get_peer(1).put_packet(data.to_utf8())

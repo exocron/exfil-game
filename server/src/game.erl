@@ -203,11 +203,13 @@ maybe_set_role(_, _, State) ->
     {reply, {error, invalid_role}, State}.
 
 maybe_commit_role(client1, Bool, State) when State#gamestate.client1#clientinfo.role =/= undecided ->
+    State#gamestate.client2#clientinfo.pid ! {peer_commit_role_changed, Bool},
     NewClient = State#gamestate.client1#clientinfo{commit_role = Bool},
     if Bool -> self() ! maybe_start_game; true -> true end,
     {reply, ok, State#gamestate{client1 = NewClient}};
 
 maybe_commit_role(client2, Bool, State) when State#gamestate.client2#clientinfo.role =/= undecided ->
+    State#gamestate.client1#clientinfo.pid ! {peer_commit_role_changed, Bool},
     NewClient = State#gamestate.client2#clientinfo{commit_role = Bool},
     if Bool -> self() ! maybe_start_game; true -> true end,
     {reply, ok, State#gamestate{client2 = NewClient}};
@@ -221,4 +223,7 @@ maybe_start_game(State) when State#gamestate.client1 == nil orelse State#gamesta
 maybe_start_game(State) when State#gamestate.client1#clientinfo.commit_role =:= true andalso State#gamestate.client2#clientinfo.commit_role =:= true ->
     State#gamestate.client1#clientinfo.pid ! game_is_starting,
     State#gamestate.client2#clientinfo.pid ! game_is_starting,
-    State#gamestate{state = started}.
+    State#gamestate{state = started};
+
+maybe_start_game(State) ->
+    State.

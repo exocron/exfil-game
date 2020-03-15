@@ -44,7 +44,10 @@ websocket_handle_json(Game, #{<<"action">> := <<"setrole">>, <<"role">> := <<"op
     game:client_select_role(Game, operative);
 
 websocket_handle_json(Game, #{<<"action">> := <<"setrole">>, <<"role">> := <<"hacker">>}) ->
-    game:client_select_role(Game, hacker).
+    game:client_select_role(Game, hacker);
+
+websocket_handle_json(Game, #{<<"action">> := <<"ready">>, <<"ready">> := Ready}) ->
+    game:client_commit_role(Game, Ready).
 
 websocket_info(game_is_full, {game, Pid}) ->
     JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"role_select">>}),
@@ -56,4 +59,12 @@ websocket_info({peer_name_changed, Name}, {game, Pid}) ->
 
 websocket_info({peer_role_changed, Role}, {game, Pid}) ->
     JSON = jiffy:encode(#{action => <<"rrolechange">>, role => Role}),
+    {[{text, JSON}], {game, Pid}};
+
+websocket_info({peer_commit_role_changed, Ready}, {game, Pid}) ->
+    JSON = jiffy:encode(#{action => <<"rready">>, ready => Ready}),
+    {[{text, JSON}], {game, Pid}};
+
+websocket_info(game_is_starting, {game, Pid}) ->
+    JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"game_start">>}),
     {[{text, JSON}], {game, Pid}}.

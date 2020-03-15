@@ -2,6 +2,7 @@ extends Control
 
 func _ready():
 	GlobalVariables.connect("peer_role_changed", self, "_on_peer_role_changed")
+	GlobalVariables.connect("peer_ready", self, "_on_peer_ready")
 	$OptionButton.add_item("Select Role", 0)
 	$OptionButton.add_item("Operative", 1)
 	$OptionButton.add_item("Hacker", 2)
@@ -19,3 +20,11 @@ func _on_peer_role_changed(peer_role):
 		peer_role = "unset"
 	if GlobalVariables.remoteName:
 		$TheirNameAndRole.text = GlobalVariables.remoteName + "'s role: %s" % [peer_role]
+
+func _on_peer_ready(ready):
+	if ready:
+		# TODO: fix
+		$TheirNameAndRole.text = $TheirNameAndRole.text + " (ready)"
+
+func _on_Button_pressed():
+	GlobalVariables.signal_ready()
