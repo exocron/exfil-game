@@ -10,7 +10,7 @@
 -module(game).
 -behaviour(gen_server).
 
--export([new/0, delete/2, add_client/1, reconnect_client/2,
+-export([new/0, delete/1, add_client/2, reconnect_client/2,
     client_select_role/2, client_commit_role/2]).
 
 -export([init/1, handle_call/3, handle_info/2]).
@@ -29,9 +29,9 @@
 }).
 
 new() -> gen_server:start(game, [], []).
-delete(Pid, Reason) -> gen_server:stop(Pid, Reason).
+delete(Pid) -> gen_server:stop(Pid).
 
-add_client(Pid) -> gen_server:call(Pid, add_client).
+add_client(Pid, Client) -> gen_server:call(Pid, {add_client, Client}).
 reconnect_client(Pid, Ref) -> gen_server:call(Pid, {reconnect_client, Ref}).
 client_select_role(Pid, Role) -> gen_server:call(Pid, {client_select_role, Role}).
 client_commit_role(Pid, Bool) -> gen_server:call(Pid, {client_commit_role, Bool}).
@@ -44,7 +44,7 @@ hacker_configure_laser(<<"las0">>, false, 0) -> self(), ok.
 
 init(_) -> {ok, #gamestate{}}.
 
-handle_call(add_client, {Pid, _}, State) ->
+handle_call({add_client, Pid}, _, State) ->
     handle_duplicate_clients(State, Pid);
 
 handle_call({reconnect_client, Ref}, {Pid, _}, State) ->
@@ -53,10 +53,10 @@ handle_call({reconnect_client, Ref}, {Pid, _}, State) ->
 
 %% Require that all following calls match one of the clients
 
-handle_call(Request, {Pid, _} = From, State) when Pid == State#gamestate.client1#clientinfo.pid ->
+handle_call(Request, {Pid, _}, State) when Pid == State#gamestate.client1#clientinfo.pid ->
     handle_call_client(client1, Request, State);
 
-handle_call(Request, {Pid, _} = From, State) when Pid == State#gamestate.client2#clientinfo.pid ->
+handle_call(Request, {Pid, _}, State) when Pid == State#gamestate.client2#clientinfo.pid ->
     handle_call_client(client2, Request, State);
 
 handle_call(_, _, State) ->
@@ -71,7 +71,7 @@ handle_call_client(_, {client_select_role, _}, State) ->
 handle_call_client(Client, {client_commit_role, Bool}, State) when State#gamestate.state =:= pregame ->
     maybe_commit_role(Client, Bool, State);
 
-handle_call_client(Client, {client_commit_role, _}, State) ->
+handle_call_client(_, {client_commit_role, _}, State) ->
     {reply, {error, game_started}, State}.
 
 handle_info(maybe_start_game, State) ->
@@ -128,17 +128,17 @@ maybe_reconnect_client_1(State, Pid, Ref, C1, _) when C1#clientinfo.ref == Ref -
     NewClient = C1#clientinfo{pid = Pid},
     {reply, ok, State#gamestate{client1 = NewClient}};
 
-maybe_reconnect_client_1(State, Pid, Ref, C1, C2) ->
+maybe_reconnect_client_1(State, Pid, Ref, _, C2) ->
     maybe_reconnect_client_2(State, Pid, Ref, C2).
 
-maybe_reconnect_client_2(State, Pid, Ref, nil) ->
+maybe_reconnect_client_2(State, _, _, nil) ->
     {reply, error, State};
 
 maybe_reconnect_client_2(State, Pid, Ref, C2) when C2#clientinfo.ref == Ref ->
     NewClient = C2#clientinfo{pid = Pid},
     {reply, ok, State#gamestate{client2 = NewClient}};
 
-maybe_reconnect_client_2(State, Pid, Ref, _) ->
+maybe_reconnect_client_2(State, _, _, _) ->
     {reply, error, State}.
 
 %% Set client roles
