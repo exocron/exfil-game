@@ -30,7 +30,13 @@ handle_call(add_game, From, []) ->
     maybe_add_game(From, game:new());
 
 handle_call({add_game, Game, Key}, _, []) ->
-    maybe_insert_game(Key, Game, [], ets:insert_new(game_tbl, {Key, Game}), ets:insert_new(game_rev, {Game, Key})).
+    maybe_insert_game(Key, Game, [], ets:insert_new(game_tbl, {Key, Game}), ets:insert_new(game_rev, {Game, Key}));
+
+handle_call({find_game, Key}, _, []) ->
+    case ets:lookup(game_tbl, Key) of
+        [{Key, Pid}] -> {reply, {ok, Pid}, []};
+        _ -> {reply, {error, notfound}, []}
+    end.
 
 handle_info({'DOWN', _, process, Pid, _}, []) ->
     case ets:lookup(game_rev, Pid) of
