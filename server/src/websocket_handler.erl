@@ -14,7 +14,6 @@ websocket_init(new) ->
     {[{text, JSON}], {game, Pid}};
 
 websocket_init(join) ->
-    io:format("WebSocket Init Join~n"),
     {ok, wait_for_game_info}.
 
 websocket_handle({text, JSON}, wait_for_game_info) ->
@@ -36,13 +35,25 @@ websocket_handle({text, JSON}, {game, Pid}) ->
     {websocket_handle_json(Pid, jiffy:decode(JSON, [return_maps])), {game, Pid}}.
 
 websocket_handle_json(Game, #{<<"action">> := <<"setname">>, <<"name">> := Name}) ->
-    game:client_set_name(Game, Name).
+    game:client_set_name(Game, Name);
+
+websocket_handle_json(Game, #{<<"action">> := <<"setrole">>, <<"role">> := <<"undecided">>}) ->
+    game:client_select_role(Game, undecided);
+
+websocket_handle_json(Game, #{<<"action">> := <<"setrole">>, <<"role">> := <<"operative">>}) ->
+    game:client_select_role(Game, operative);
+
+websocket_handle_json(Game, #{<<"action">> := <<"setrole">>, <<"role">> := <<"hacker">>}) ->
+    game:client_select_role(Game, hacker).
 
 websocket_info(game_is_full, {game, Pid}) ->
     JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"role_select">>}),
     {[{text, JSON}], {game, Pid}};
 
 websocket_info({peer_name_changed, Name}, {game, Pid}) ->
-    io:format("debug3~n"),
     JSON = jiffy:encode(#{action => <<"rnamechange">>, name => Name}),
+    {[{text, JSON}], {game, Pid}};
+
+websocket_info({peer_role_changed, Role}, {game, Pid}) ->
+    JSON = jiffy:encode(#{action => <<"rrolechange">>, role => Role}),
     {[{text, JSON}], {game, Pid}}.

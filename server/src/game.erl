@@ -190,10 +190,12 @@ maybe_reconnect_client_2(State, _, _, _) ->
 %% Set client roles
 
 maybe_set_role(client1, Role, State) when Role =:= hacker orelse Role =:= operative orelse Role =:= undecided ->
+    State#gamestate.client2#clientinfo.pid ! {peer_role_changed, Role},
     NewClient = State#gamestate.client1#clientinfo{role = Role, commit_role = false},
     {reply, ok, State#gamestate{client1 = NewClient}};
 
 maybe_set_role(client2, Role, State) when Role =:= hacker orelse Role =:= operative orelse Role =:= undecided ->
+    State#gamestate.client1#clientinfo.pid ! {peer_role_changed, Role},
     NewClient = State#gamestate.client2#clientinfo{role = Role, commit_role = false},
     {reply, ok, State#gamestate{client2 = NewClient}};
 

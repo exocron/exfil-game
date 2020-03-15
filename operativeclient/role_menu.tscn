@@ -1,0 +1,68 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://role_menu.gd" type="Script" id=1]
+
+[node name="role_menu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+margin_left = -180.0
+margin_right = 180.0
+margin_bottom = 99.0
+text = "                             Choose your role:
+
+Operative - navigate the enemy base and avoid traps
+Hacker - use a DOS-style prompt to disable enemy traps
+
+           There must be one player of each role"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="YourName" type="Label" parent="."]
+margin_left = 197.5
+margin_top = 154.0
+margin_right = 258.5
+margin_bottom = 168.0
+text = "Your role:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="OptionButton" type="OptionButton" parent="."]
+margin_left = 280.0
+margin_top = 152.5
+margin_right = 380.0
+margin_bottom = 172.5
+text = "Select Role"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Button" type="Button" parent="."]
+margin_left = 400.5
+margin_top = 153.0
+margin_right = 450.5
+margin_bottom = 173.0
+text = "Ready"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="TheirNameAndRole" type="Label" parent="."]
+margin_left = 202.0
+margin_top = 200.5
+margin_right = 242.0
+margin_bottom = 214.5
+text = "Your partner's role: unset"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+[connection signal="item_selected" from="OptionButton" to="." method="_on_OptionButton_item_selected"]
