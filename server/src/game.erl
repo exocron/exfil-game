@@ -128,14 +128,18 @@ maybe_add_client(State, Pid, nil, nil) ->
     Client = #clientinfo{pid = Pid, ref = Ref},
     {reply, {ok, Ref}, State#gamestate{client1 = Client}};
 
-maybe_add_client(State, Pid, nil, _) ->
+maybe_add_client(State, Pid, nil, C2) ->
     Ref = make_ref(),
     Client = #clientinfo{pid = Pid, ref = Ref},
+    Pid ! game_is_full,
+    C2#clientinfo.pid ! game_is_full,
     {reply, {ok, Ref}, State#gamestate{client1 = Client}};
 
-maybe_add_client(State, Pid, _, nil) ->
+maybe_add_client(State, Pid, C1, nil) ->
     Ref = make_ref(),
     Client = #clientinfo{pid = Pid, ref = Ref},
+    Pid ! game_is_full,
+    C1#clientinfo.pid ! game_is_full,
     {reply, {ok, Ref}, State#gamestate{client2 = Client}};
 
 maybe_add_client(State, _, _, _) ->

@@ -1,5 +1,5 @@
 -module(websocket_handler).
--export([init/2, websocket_init/1, websocket_handle/2]).
+-export([init/2, websocket_init/1, websocket_handle/2, websocket_info/2]).
 
 init(Req, new) ->
     {cowboy_websocket, Req, new};
@@ -30,4 +30,8 @@ websocket_handle({text, JSON}, wait_for_game_info) ->
             {ok, Cookie} = cookiejar:get_cookie(Ref),
             {Pid, jiffy:encode(#{code => Code, token => Cookie})}
     end,
-    {[{text, Out}], {game, Pid}}.
+    {[{text, Out}], {game, Pid}};
+
+websocket_info(game_is_full, {game, Pid}) ->
+    JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"role_select">>}),
+    {[{text, JSON}], {game, Pid}}.
