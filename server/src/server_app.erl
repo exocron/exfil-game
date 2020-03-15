@@ -15,6 +15,14 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
+    Dispatch = cowboy_router:compile([
+        {'_', [{"/new", websocket_handler, new}]},
+        {'_', [{"/join", websocket_handler, join}]}
+    ]),
+    {ok, _} = cowboy:start_clear(exfil_http_listener,
+        [{port, 8080}],
+        #{env => #{dispatch => Dispatch}}
+    ),
     server_sup:start_link().
 
 %%--------------------------------------------------------------------

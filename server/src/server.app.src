@@ -5,7 +5,9 @@
   {mod, { server_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    cowboy,
+    jiffy
    ]},
   {env,[]},
   {modules, []},
