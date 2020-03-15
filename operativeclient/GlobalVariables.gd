@@ -1,11 +1,14 @@
 extends Node
 
-var playerName: String = ""
+var _playerName: String = ""
+var _remoteName: String = ""
 var _ws: WebSocketClient = null
 var _token: String = ""
 var _code: String = ""
 
 var code: String setget _code_set, _code_get
+var playerName: String setget _playerName_set, _playerName_get
+var remoteName: String setget ,_remoteName_get
 
 func _ready():
 	ws_connect()
@@ -41,9 +44,19 @@ func _on_ws_data_received():
 	data = JSON.parse(data).get_result()
 	if data.has("code"):
 		self.code = data["code"]
+		if _playerName:
+			self.playerName = _playerName
 	if data.has("token"):
 		_token = data["token"]
 	print("Received data: ", str(data))
+	if data.has("action"):
+		_dispatchActions(data["action"], data)
+
+func _dispatchActions(action, data):
+	if action == "rnamechange":
+		self.remoteName = data["name"]
+	if action == "statechange" and data["newstate"] == "role_select":
+		get_tree().change_scene("res://role_menu.tscn")
 
 func _process(delta):
 	_ws.poll()
@@ -54,3 +67,15 @@ func _code_get():
 func _code_set(newcode):
 	_code = newcode
 	_token = ""
+
+func _playerName_get():
+	return _playerName
+
+func _playerName_set(newname):
+	_playerName = newname
+	var data = {"action": "setname", "name": newname}
+	data = JSON.print(data)
+	_ws.get_peer(1).put_packet(data.to_utf8())
+
+func _remoteName_get():
+	return _remoteName

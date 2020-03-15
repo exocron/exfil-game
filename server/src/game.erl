@@ -11,12 +11,13 @@
 -behaviour(gen_server).
 
 -export([new/0, delete/1, set_key/2, get_key/1, notify_manager_shutdown/1]).
--export([add_client/2, reconnect_client/2, client_select_role/2, client_commit_role/2]).
+-export([add_client/2, reconnect_client/2, client_set_name/2, client_select_role/2, client_commit_role/2]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2]).
 
 -record(clientinfo, {
     pid,
     ref,
+    name = nil,
     role = undecided,
     commit_role = false
 }).
@@ -37,6 +38,7 @@ notify_manager_shutdown(Pid) -> gen_server:cast(Pid, notify_manager_shutdown).
 
 add_client(Pid, Client) -> gen_server:call(Pid, {add_client, Client}).
 reconnect_client(Pid, Ref) -> gen_server:call(Pid, {reconnect_client, Ref}).
+client_set_name(Pid, Name) -> gen_server:call(Pid, {client_set_name, Name}).
 client_select_role(Pid, Role) -> gen_server:call(Pid, {client_select_role, Role}).
 client_commit_role(Pid, Bool) -> gen_server:call(Pid, {client_commit_role, Bool}).
 
@@ -75,6 +77,22 @@ handle_call(Request, {Pid, _}, State) when Pid == State#gamestate.client2#client
 
 handle_call(_, _, State) ->
     {reply, {error, not_in_game}, State}.
+
+handle_call_client(client1, {client_set_name, Name}, State) ->
+    NewClient = State#gamestate.client1#clientinfo{name = Name},
+    case State#gamestate.client2 of
+        nil -> nil;
+        #clientinfo{pid = Pid} -> Pid ! {peer_name_changed, Name}
+    end,
+    {reply, ok, State#gamestate{client1 = NewClient}};
+
+handle_call_client(client2, {client_set_name, Name}, State) ->
+    NewClient = State#gamestate.client2#clientinfo{name = Name},
+    case State#gamestate.client1 of
+        nil -> nil;
+        #clientinfo{pid = Pid} -> Pid ! {peer_name_changed, Name}
+    end,
+    {reply, ok, State#gamestate{client2 = NewClient}};
 
 handle_call_client(Client, {client_select_role, Role}, State) when State#gamestate.state =:= pregame ->
     maybe_set_role(Client, Role, State);
@@ -131,6 +149,7 @@ maybe_add_client(State, Pid, nil, nil) ->
 maybe_add_client(State, Pid, nil, C2) ->
     Ref = make_ref(),
     Client = #clientinfo{pid = Pid, ref = Ref},
+    Pid ! {peer_name_changed, C2#clientinfo.name},
     Pid ! game_is_full,
     C2#clientinfo.pid ! game_is_full,
     {reply, {ok, Ref}, State#gamestate{client1 = Client}};
@@ -138,6 +157,7 @@ maybe_add_client(State, Pid, nil, C2) ->
 maybe_add_client(State, Pid, C1, nil) ->
     Ref = make_ref(),
     Client = #clientinfo{pid = Pid, ref = Ref},
+    Pid ! {peer_name_changed, C1#clientinfo.name},
     Pid ! game_is_full,
     C1#clientinfo.pid ! game_is_full,
     {reply, {ok, Ref}, State#gamestate{client2 = Client}};

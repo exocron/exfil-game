@@ -32,6 +32,17 @@ websocket_handle({text, JSON}, wait_for_game_info) ->
     end,
     {[{text, Out}], {game, Pid}};
 
+websocket_handle({text, JSON}, {game, Pid}) ->
+    {websocket_handle_json(Pid, jiffy:decode(JSON, [return_maps])), {game, Pid}}.
+
+websocket_handle_json(Game, #{<<"action">> := <<"setname">>, <<"name">> := Name}) ->
+    game:client_set_name(Game, Name).
+
 websocket_info(game_is_full, {game, Pid}) ->
     JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"role_select">>}),
+    {[{text, JSON}], {game, Pid}};
+
+websocket_info({peer_name_changed, Name}, {game, Pid}) ->
+    io:format("debug3~n"),
+    JSON = jiffy:encode(#{action => <<"rnamechange">>, name => Name}),
     {[{text, JSON}], {game, Pid}}.
