@@ -34,7 +34,7 @@ void init_console()
 	}
 }
 
-void init_websocket()
+int init_websocket()
 {
 	int s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s == INVALID_SOCKET) {
@@ -54,6 +54,7 @@ void init_websocket()
 	if (err = websocket_authenticate(s)) {
 		throw std::runtime_error("websocket_authenticate failed: " + std::to_string(err));
 	}
+	return s;
 }
 
 int main(int argc, char** argv)
@@ -68,8 +69,18 @@ int main(int argc, char** argv)
 	try {
 		init_wsa();
 		init_console();
-		init_websocket();
-		std::cout << "Hello \x1b[31mWorld\x1b[0m!\n";
+		int s = init_websocket();
+		std::cout << "Opening a remote shell to [REDACTED]...\nConnected.\n\n";
+		unsigned char* buf;
+		int len;
+		int p;
+		while ((p = websocket_read_next_packet(s, &buf, &len)) >= 0) {
+			if (p == 0) {
+				continue;
+			}
+			buf[len] = 0; // TODO: fix
+			std::cout << (char*)buf;
+		}
 	} catch (const std::runtime_error& e) {
 		std::cout << e.what() << std::endl;
 		std::cout << "Can't continue\n";

@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 -export([new/0, delete/1, set_key/2, get_key/1, notify_manager_shutdown/1]).
--export([add_client/2, reconnect_client/2, client_set_name/2, client_select_role/2, client_commit_role/2]).
+-export([add_client/2, reconnect_client/2, client_set_name/2, client_select_role/2, client_commit_role/2, client_is_hacker/1]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2]).
 
 -record(clientinfo, {
@@ -41,6 +41,7 @@ reconnect_client(Pid, Ref) -> gen_server:call(Pid, {reconnect_client, Ref}).
 client_set_name(Pid, Name) -> gen_server:call(Pid, {client_set_name, Name}).
 client_select_role(Pid, Role) -> gen_server:call(Pid, {client_select_role, Role}).
 client_commit_role(Pid, Bool) -> gen_server:call(Pid, {client_commit_role, Bool}).
+client_is_hacker(Pid) -> gen_server:call(Pid, client_is_hacker).
 
 operative_move_location({0, 0}) -> self(), ok.
 
@@ -104,7 +105,16 @@ handle_call_client(Client, {client_commit_role, Bool}, State) when State#gamesta
     maybe_commit_role(Client, Bool, State);
 
 handle_call_client(_, {client_commit_role, _}, State) ->
-    {reply, {error, game_started}, State}.
+    {reply, {error, game_started}, State};
+
+handle_call_client(client1, client_is_hacker, State) when State#gamestate.state =:= started andalso State#gamestate.client1#clientinfo.role =:= hacker ->
+    {reply, true, State};
+
+handle_call_client(client2, client_is_hacker, State) when State#gamestate.state =:= started andalso State#gamestate.client2#clientinfo.role =:= hacker ->
+    {reply, true, State};
+
+handle_call_client(_, client_is_hacker, State) ->
+    {reply, false, State}.
 
 handle_info(connect_manager, State) ->
     case game_manager:add_game(self(), State#gamestate.key) of

@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-char websocket_buffer[4096];
+unsigned char websocket_buffer[4096];
 
 const unsigned char websocket_key[] = {
 	0x0B, 0x1E, 0x28, 0x44, 0x3F, 0x0F, 0xBC, 0xCB,
@@ -63,7 +63,7 @@ int _ws_scan_newline(int socket)
 {
     int r;
     int state = 0;
-    while ((r = recv(socket, websocket_buffer, sizeof(websocket_buffer), 0)) > 0) {
+    while ((r = recv(socket, (char*)websocket_buffer, sizeof(websocket_buffer), 0)) > 0) {
         for (int i = 0; i < r; i++) {
             if (state & 1) {
                 if (websocket_buffer[i] == '\n') {
@@ -95,7 +95,7 @@ int websocket_connect(int socket)
     if (err == SOCKET_ERROR) {
         return -1;
     }
-    err = _ws_loop_read(socket, websocket_buffer, sizeof(http_response) - 1, 0);
+    err = _ws_loop_read(socket, (char*)websocket_buffer, sizeof(http_response) - 1, 0);
     if (err == SOCKET_ERROR) {
         return -2;
     }
@@ -131,6 +131,37 @@ int websocket_authenticate(int socket)
         return -5;
     }
     return 0;
+}
+
+int websocket_read_next_packet(int socket, unsigned char **buf, int *len)
+{
+    int err = _ws_loop_read(socket, (char*)websocket_buffer, 2, 0);
+    if (err == SOCKET_ERROR) {
+        return -1;
+    }
+    if (websocket_buffer[1] > 125) {
+        return -2; // TODO: fix
+    }
+    switch (websocket_buffer[0]) {
+    case 0x88:
+        return -3;
+    case 0x81:
+        err = _ws_loop_read(socket, (char*)websocket_buffer, websocket_buffer[1], 0);
+        if (err == SOCKET_ERROR) {
+            return -4;
+        }
+        return 0;
+    case 0x82:
+        err = _ws_loop_read(socket, (char*)websocket_buffer, websocket_buffer[1], 0);
+        if (err == SOCKET_ERROR) {
+            return -5;
+        }
+        *buf = websocket_buffer;
+        *len = websocket_buffer[1];
+        return 1;
+    default:
+        return -6; // TODO: fix
+    }
 }
 
 #endif

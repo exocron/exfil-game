@@ -29,6 +29,7 @@ websocket_handle({text, JSON}, wait_for_game_info) ->
             {ok, Cookie} = cookiejar:get_cookie(Ref),
             {Pid, jiffy:encode(#{code => Code, token => Cookie})}
     end,
+    self() ! maybe_create_terminal,
     {[{text, Out}], {game, Pid}};
 
 websocket_handle({text, JSON}, {game, Pid}) ->
@@ -67,4 +68,16 @@ websocket_info({peer_commit_role_changed, Ready}, {game, Pid}) ->
 
 websocket_info(game_is_starting, {game, Pid}) ->
     JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"game_start">>}),
-    {[{text, JSON}], {game, Pid}}.
+    {[{text, JSON}], {game, Pid}};
+
+websocket_info(maybe_create_terminal, {game, Pid}) ->
+    case game:client_is_hacker(Pid) of
+        true ->
+            {ok, TermPid} = terminal:start_link(),
+            {ok, {terminal, TermPid}};
+        _ ->
+            {ok, {game, Pid}}
+    end;
+
+websocket_info({output, Text}, {terminal, Pid}) ->
+    {[{binary, Text}], {terminal, Pid}}.

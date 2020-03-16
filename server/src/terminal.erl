@@ -40,4 +40,4 @@ run_command(Pid, [<<"lcontrol">> | Args]) ->
     Pid ! {output, <<"\nHi\n\nC:\\> ">>};
 
 run_command(Pid, [Cmd | _]) ->
-    Pid ! {<<"\n\"", Cmd/binary, "\": Command Not Found\n\nC:\\> ">>}.
+    Pid ! {output, <<"\n\"", Cmd/binary, "\": Command Not Found\n\nC:\\> ">>}.
