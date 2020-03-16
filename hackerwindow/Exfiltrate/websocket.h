@@ -135,6 +135,7 @@ int websocket_authenticate(int socket)
 
 int websocket_read_next_packet(int socket, unsigned char **buf, int *len)
 {
+    int l;
     int err = _ws_loop_read(socket, (char*)websocket_buffer, 2, 0);
     if (err == SOCKET_ERROR) {
         return -1;
@@ -152,12 +153,13 @@ int websocket_read_next_packet(int socket, unsigned char **buf, int *len)
         }
         return 0;
     case 0x82:
+        l = websocket_buffer[1];
         err = _ws_loop_read(socket, (char*)websocket_buffer, websocket_buffer[1], 0);
         if (err == SOCKET_ERROR) {
             return -5;
         }
         *buf = websocket_buffer;
-        *len = websocket_buffer[1];
+        *len = l;
         return 1;
     default:
         return -6; // TODO: fix

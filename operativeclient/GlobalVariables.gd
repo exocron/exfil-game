@@ -70,7 +70,7 @@ func _dispatchActions(action, data):
 		get_tree().change_scene("res://role_menu.tscn")
 	if action == "statechange" and data["newstate"] == "game_start":
 		if _role == "hacker":
-			var pid = OS.execute("rsh.exe", [_code, _token], false)
+			var pid = OS.execute(".\\rsh.exe", [_code, _token], false)
 			if pid != -1:
 				get_tree().quit()
 		else:
