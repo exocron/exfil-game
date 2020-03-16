@@ -1,4 +1,8 @@
-#include <Windows.h>
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <Ws2tcpip.h>
+
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -57,6 +61,32 @@ int init_websocket()
 	return s;
 }
 
+void process_stdin()
+{
+	INPUT_RECORD record;
+	DWORD unused;
+	if (ReadConsoleInput(GetStdHandle(STD_INPUT_HANDLE), &record, 1, &unused) == 0) {
+		throw std::runtime_error("ReadConsoleInput failed: " + std::to_string(GetLastError()));
+	}
+	// TODO: something
+}
+
+void process_websocket(int s)
+{
+	while (websocket_data_available(s) > 0) {
+		unsigned char* buf;
+		int len;
+		int err = websocket_read_next_packet(s, &buf, &len);
+		if (err < 0) {
+			throw std::runtime_error("process_websocket failed: " + std::to_string(err));
+		}
+		if (err == 1) {
+			buf[len] = 0; // TODO: fix
+			std::cout << (char*)buf;
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
 	if (argc <= 2) {
@@ -71,15 +101,34 @@ int main(int argc, char** argv)
 		init_console();
 		int s = init_websocket();
 		std::cout << "Opening a remote shell to [REDACTED]...\nConnected.\n\n";
-		unsigned char* buf;
-		int len;
-		int p;
-		while ((p = websocket_read_next_packet(s, &buf, &len)) >= 0) {
-			if (p == 0) {
-				continue;
+
+		HANDLE handles[] = {
+			GetStdHandle(STD_INPUT_HANDLE),
+			WSACreateEvent(),
+		};
+		WSANETWORKEVENTS events;
+		WSAEventSelect(s, handles[1], FD_READ);
+		while (true) {
+			DWORD result = WSAWaitForMultipleEvents(
+				sizeof(handles)/sizeof(*handles),
+				handles,
+				FALSE,
+				WSA_INFINITE,
+				TRUE
+			);
+			std::cout << result << std::endl;
+			switch (result) {
+			case WSA_WAIT_EVENT_0:
+				// do something with stdin
+				process_stdin();
+				break;
+			case WSA_WAIT_EVENT_0 + 1:
+				WSAEnumNetworkEvents(s, handles[1], &events);
+				process_websocket(s);
+				break;
+			default:
+				break;
 			}
-			buf[len] = 0; // TODO: fix
-			std::cout << (char*)buf;
 		}
 	} catch (const std::runtime_error& e) {
 		std::cout << e.what() << std::endl;

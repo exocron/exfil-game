@@ -133,6 +133,15 @@ int websocket_authenticate(int socket)
     return 0;
 }
 
+int websocket_data_available(int socket)
+{
+    unsigned long l;
+    if (ioctlsocket(socket, FIONREAD, &l) == SOCKET_ERROR) {
+        return -WSAGetLastError();
+    }
+    return (int)l;
+}
+
 int websocket_read_next_packet(int socket, unsigned char **buf, int *len)
 {
     int l;
