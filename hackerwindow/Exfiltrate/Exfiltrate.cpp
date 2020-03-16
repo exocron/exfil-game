@@ -61,14 +61,29 @@ int init_websocket()
 	return s;
 }
 
-void process_stdin()
+void process_stdin_buffered(int s)
 {
-	INPUT_RECORD record;
-	DWORD unused;
-	if (ReadConsoleInput(GetStdHandle(STD_INPUT_HANDLE), &record, 1, &unused) == 0) {
-		throw std::runtime_error("ReadConsoleInput failed: " + std::to_string(GetLastError()));
+	static char buf[256];
+	static int len = 0;
+	INPUT_RECORD record[32];
+	DWORD event_length;
+	HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+	while (true) {
+		if (GetNumberOfConsoleInputEvents(in, &event_length) == 0) {
+			throw std::runtime_error("GetNumberOfConsoleInputEvents failed: " + std::to_string(GetLastError()));
+		}
+		if (event_length == 0) {
+			return;
+		}
+		if (ReadConsoleInput(GetStdHandle(STD_INPUT_HANDLE), record, sizeof(record)/sizeof(*record), &event_length) == 0) {
+			throw std::runtime_error("ReadConsoleInput failed: " + std::to_string(GetLastError()));
+		}
+		for (int i = 0; i < event_length; i++) {
+			if (record[i].EventType == KEY_EVENT && record[i].Event.KeyEvent.bKeyDown) {
+				std::cout << record[i].Event.KeyEvent.uChar.AsciiChar << std::flush;
+			}
+		}
 	}
-	// TODO: something
 }
 
 void process_websocket(int s)
@@ -118,8 +133,7 @@ int main(int argc, char** argv)
 			);
 			switch (result) {
 			case WSA_WAIT_EVENT_0:
-				// do something with stdin
-				process_stdin();
+				process_stdin_buffered(s);
 				break;
 			case WSA_WAIT_EVENT_0 + 1:
 				WSAEnumNetworkEvents(s, handles[1], &events);
