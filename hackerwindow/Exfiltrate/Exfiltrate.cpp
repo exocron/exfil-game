@@ -116,7 +116,6 @@ int main(int argc, char** argv)
 				WSA_INFINITE,
 				TRUE
 			);
-			std::cout << result << std::endl;
 			switch (result) {
 			case WSA_WAIT_EVENT_0:
 				// do something with stdin
