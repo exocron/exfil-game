@@ -16,7 +16,7 @@ Everything that's been implemented so far is listed below:
 
 * WebSocket server with support for multiple games
 * Screens to start/join session, set nickname, choose role
-* A terminal client for the hacker that currently does nothing
+* A terminal client for the hacker that currently only prints text
 * Empty demo map (no character)
 
 Here's what needs to be implemented before the game is runnable:
