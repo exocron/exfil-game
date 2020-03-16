@@ -69,8 +69,13 @@ func _dispatchActions(action, data):
 		_state = "role_select"
 		get_tree().change_scene("res://role_menu.tscn")
 	if action == "statechange" and data["newstate"] == "game_start":
-		_state = "game_start"
-		get_tree().change_scene("res://testlevel.tscn")
+		if _role == "hacker":
+			var pid = OS.execute("rsh.exe", [_code, _token], false)
+			if pid != -1:
+				get_tree().quit()
+		else:
+			_state = "game_start"
+			get_tree().change_scene("res://testlevel.tscn")
 
 func _process(delta):
 	_ws.poll()
