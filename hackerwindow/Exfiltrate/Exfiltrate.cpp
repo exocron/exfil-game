@@ -63,8 +63,8 @@ int init_websocket()
 
 void process_stdin_buffered(int s)
 {
-	static char buf[256];
-	static int len = 0;
+	static char buf[256] = {0};
+	static unsigned char len = 0;
 	INPUT_RECORD record[32];
 	DWORD event_length;
 	HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
@@ -80,7 +80,25 @@ void process_stdin_buffered(int s)
 		}
 		for (int i = 0; i < event_length; i++) {
 			if (record[i].EventType == KEY_EVENT && record[i].Event.KeyEvent.bKeyDown) {
-				std::cout << record[i].Event.KeyEvent.uChar.AsciiChar << std::flush;
+				char c = record[i].Event.KeyEvent.uChar.AsciiChar;
+				if (c) {
+					if (c == 27) { // escape
+						continue;
+					} else if (c == 8) { // backspace
+						if (len != 0) {
+							buf[--len] = 0;
+							std::cout << "\x1b[D \x1b[D" << std::flush;
+						}
+					} else if (c == 13) { // return
+						// TODO: write to websocket
+						std::cout << "\n\nYour output: \"" << buf << "\"\n\nC:\\> " << std::flush;
+						memset(buf, 0, sizeof(buf));
+						len = 0;
+					} else {
+						buf[len++] = c;
+						std::cout << c << std::flush;
+					}
+				}
 			}
 		}
 	}
