@@ -175,4 +175,21 @@ int websocket_read_next_packet(int socket, unsigned char **buf, int *len)
     }
 }
 
+int websocket_write_packet(int socket, const void *buf, int len)
+{
+    if (len > 125) {
+        return -1; // TODO: fix
+    }
+    char header[6] = {0x82, 0x80 | (char)len, 0, 0, 0, 0};
+    int err = _ws_loop_write(socket, header, sizeof(header), 0);
+    if (err == SOCKET_ERROR) {
+        return -2;
+    }
+    err = _ws_loop_write(socket, (const char *)buf, len, 0);
+    if (err == SOCKET_ERROR) {
+        return -3;
+    }
+    return 0;
+}
+
 #endif

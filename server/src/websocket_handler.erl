@@ -33,7 +33,11 @@ websocket_handle({text, JSON}, wait_for_game_info) ->
     {[{text, Out}], {game, Pid}};
 
 websocket_handle({text, JSON}, {game, Pid}) ->
-    {websocket_handle_json(Pid, jiffy:decode(JSON, [return_maps])), {game, Pid}}.
+    {websocket_handle_json(Pid, jiffy:decode(JSON, [return_maps])), {game, Pid}};
+
+websocket_handle({binary, Data}, {terminal, Pid}) ->
+    terminal:send_input(Pid, Data),
+    {ok, {terminal, Pid}}.
 
 websocket_handle_json(Game, #{<<"action">> := <<"setname">>, <<"name">> := Name}) ->
     game:client_set_name(Game, Name);

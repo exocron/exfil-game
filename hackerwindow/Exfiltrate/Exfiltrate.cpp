@@ -91,7 +91,11 @@ void process_stdin_buffered(int s)
 						}
 					} else if (c == 13) { // return
 						// TODO: write to websocket
-						std::cout << "\n\nYour output: \"" << buf << "\"\n\nC:\\> " << std::flush;
+						std::cout << std::endl;
+						int err = websocket_write_packet(s, buf, len);
+						if (err) {
+							throw std::runtime_error("websocket_write_packet failed: " + std::to_string(err));
+						}
 						memset(buf, 0, sizeof(buf));
 						len = 0;
 					} else {
@@ -111,7 +115,7 @@ void process_websocket(int s)
 		int len;
 		int err = websocket_read_next_packet(s, &buf, &len);
 		if (err < 0) {
-			throw std::runtime_error("process_websocket failed: " + std::to_string(err));
+			throw std::runtime_error("websocket_read_next_packet failed: " + std::to_string(err));
 		}
 		if (err == 1) {
 			buf[len] = 0; // TODO: fix
