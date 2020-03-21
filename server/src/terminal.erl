@@ -13,6 +13,8 @@
 -export([start_link/1, send_input/2, init/1, handle_cast/2]).
 -record(state, {client, game}).
 
+-include("map_records.hrl").
+
 start_link(Game) -> gen_server:start_link(terminal, #state{client = self(), game = Game}, []).
 
 send_input(Pid, Input) -> gen_server:cast(Pid, {input, Input}).
@@ -91,15 +93,22 @@ run_command(State, lcontrol, _, []) ->
         "    lcontrol list - list all managed lasers\n"
         "    lcontrol enable <name> - enable a laser\n"
         "    lcontrol disable <name> - disable a laser\n"
-        "    lcontrol pulse <name> - set a pulse interval (in milliseconds)\n"
-        "                            0 = no pulse\n"
+        "    lcontrol pulse <name> <interval> - set a pulse interval (in milliseconds)\n"
+        "                                       0 = no pulse\n"
         "\n"
         "C:\\>"
     >>};
 
 run_command(State, lcontrol, _, [<<"list">>]) ->
     {ok, List} = game:hacker_list_lasers(State#state.game),
-    LaserInfo = << <<X/binary, "\n">> || X <- List>>,
+    LaserInfo = <<(case Laser of
+        (#laser{name = Name, enabled = true, interval = 0}) ->
+            <<Name/binary, " - enabled\n">>;
+        (#laser{name = Name, enabled = true, interval = Pulse}) ->
+            <<Name/binary, " - enabled, pulse = ", (integer_to_binary(Pulse)), "\n">>;
+        (#laser{name = Name, enabled = false}) ->
+            <<Name/binary, " - disabled\n">>
+    end) || Laser <- List>>,
     State#state.client ! {output, <<LaserInfo/binary, "\nC:\\>">>};
 
 run_command(State, exit, _, _) ->

@@ -43,6 +43,8 @@ end)())).
     set_operative_client(State, NewClient)
 end)())).
 
+-include("map_records.hrl").
+
 new() -> gen_server:start(game, [], []).
 delete(Pid) -> gen_server:stop(Pid).
 
@@ -146,7 +148,7 @@ handle_call_roll(_, _, {set_terminal_pid, _}, State) ->
     {reply, {error, not_hacker}, State};
 
 handle_call_roll(hacker, _, hacker_list_lasers, State) ->
-    {reply, {ok, [<<"las0">>]}, State};
+    {reply, {ok, State#gamestate.map#map.lasers}, State};
 
 handle_call_roll(_, _, hacker_list_lasers, State) ->
     {reply, {error, not_hacker}, State}.
@@ -268,7 +270,7 @@ maybe_start_game(State) when State#gamestate.client1 == nil orelse State#gamesta
 maybe_start_game(State) when State#gamestate.client1#clientinfo.commit_role =:= true andalso State#gamestate.client2#clientinfo.commit_role =:= true ->
     State#gamestate.client1#clientinfo.pid ! game_is_starting,
     State#gamestate.client2#clientinfo.pid ! game_is_starting,
-    State#gamestate{state = started};
+    State#gamestate{state = started, map = map:generate_map()};
 
 maybe_start_game(State) ->
     State.

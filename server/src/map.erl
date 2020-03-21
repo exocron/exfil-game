@@ -1,10 +1,7 @@
 -module(map).
 -export([generate_map/0]).
 
--record(laser, {x, y, direction}).
--record(start, {x, y, direction}).
--record(goal, {x, y}).
--record(map, {tiles, lasers, start, goal}).
+-include("map_records.hrl").
 
 generate_map() ->
     % Random maps? In my game jam?!
@@ -26,6 +23,6 @@ generate_map() ->
         <<"W..............W">>,
         <<"WWWWWWWWWWWWWWWW">>
     ], lasers = [
-        #laser{x = 0, y = 9, direction = right}
-    ], start = #start{x = 3, y = 12, direction = right},
-    goal = #goal{x = 13, y = 2}}.
+        #laser{name = <<"las0">>, p1 = #point{x = 0, y = 9}, p2 = #point{x = 15, y = 9}, enabled = true, interval = 0}
+    ], start = #start{point = #point{x = 3, y = 12}, direction = right},
+    goal = #point{x = 13, y = 2}}.
