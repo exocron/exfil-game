@@ -30,27 +30,45 @@ handle_cast({input, Text}, Pid) ->
     {noreply, Pid}.
 
 parse_command(Line) ->
-    string:lexemes(Line, " \t\r\v\f").
+    [Cmd | Args] = string:lexemes(Line, " \t\r\v\f"),
+    AtomCmd = case normalize_command_name(Cmd) of
+        <<"lcontrol">> -> lcontrol;
+        _ -> unknown
+    end,
+    [AtomCmd, Cmd | Args].
+
+normalize_command_name(<<"C:\\">>) -> <<"C:\\">>;
+normalize_command_name(<<"C:\\", Rest/binary>>) -> normalize_command_name_2(Rest);
+normalize_command_name(<<"\\">>) -> <<"\\">>;
+normalize_command_name(<<"\\", Rest/binary>>) -> normalize_command_name_2(Rest);
+normalize_command_name(Cmd) -> normalize_command_name_2(Cmd).
+
+normalize_command_name_2(<<".\\">>) -> <<".\\">>;
+normalize_command_name_2(<<".\\", Rest/binary>>) -> normalize_command_name_2(Rest);
+normalize_command_name_2(<<"..\\">>) -> <<"..\\">>;
+normalize_command_name_2(<<"..\\", Rest/binary>>) -> normalize_command_name_2(Rest);
+normalize_command_name_2(Cmd) ->
+    case binary:longest_common_suffix([Cmd, <<".exe">>]) of
+        4 -> binary:part(Cmd, 0, byte_size(Cmd) - 4);
+        _ -> Cmd
+    end.
 
 run_command(Pid, []) ->
     Pid ! {output, <<"C:\\>">>};
 
-run_command(Pid, [Cmd | Args]) ->
+run_command(Pid, [AtomCmd, Cmd | Args]) ->
     case lists:any(fun(X) -> X =:= <<"--help">> orelse X =:= <<"/?">> end, Args) of
-        true -> print_help(Pid, Cmd);
-        _ -> run_command(Pid, Cmd, Args)
+        true -> print_help(Pid, AtomCmd, Cmd);
+        _ -> run_command(Pid, AtomCmd, Cmd, Args)
     end.
 
-run_command(Pid, <<"lcontrol.exe">>, Args) ->
+run_command(Pid, lcontrol, _, Args) ->
     Pid ! {output, <<"\nHi\n\nC:\\>">>};
 
-run_command(Pid, <<"lcontrol">>, Args) ->
-    Pid ! {output, <<"\nHi\n\nC:\\>">>};
-
-run_command(Pid, Cmd, _) ->
+run_command(Pid, _, Cmd, _) ->
     Pid ! {output, <<"'", Cmd/binary, "' is not recognized as an internal or external command,\noperable program or batch file.\n\nC:\\>">>}.
 
-print_help(Pid, <<"lcontrol">>) ->
+print_help(Pid, lcontrol, _) ->
     Pid ! {output, <<
         "Laser Control Module version 2.14\n"
         "Copyright (C) 2015-2020 Quantum Security, Inc\n"
