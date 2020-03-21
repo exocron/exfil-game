@@ -111,6 +111,27 @@ run_command(State, lcontrol, _, [<<"list">>]) ->
     end) || Laser <- List>>,
     State#state.client ! {output, <<LaserInfo/binary, "\nC:\\>">>};
 
+run_command(State, lcontrol, _, [<<"list">>, X | _]) ->
+    State#state.client ! {output, <<
+        "Laser Control Module version 2.14\n"
+        "Copyright (C) 2015-2020 Quantum Security, Inc\n"
+        "\n"
+        "Error: unknown parameter '", X, "'\n"
+        "\n"
+        "Usage:\n"
+        "    lcontrol list - list all managed lasers\n"
+        "    lcontrol enable <name> - enable a laser\n"
+        "    lcontrol disable <name> - disable a laser\n"
+        "    lcontrol pulse <name> <interval> - set a pulse interval (in milliseconds)\n"
+        "                                       0 = no pulse\n"
+        "\n"
+        "C:\\>"
+    >>};
+
+run_command(State, lcontrol, _, [<<"disable">>, Name]) ->
+    game:hacker_configure_laser(State#state.game, Name, false, 0),
+    State#state.client ! {output, <<"Laser ", Name/binary, " is disabled.\n\nC:\\>">>};
+
 run_command(State, exit, _, _) ->
     State#state.client ! {output, <<"\x1b[2J\x1b[HConnection forcibly closed by remote host.\n">>};
 

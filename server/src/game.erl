@@ -12,7 +12,7 @@
 
 -export([new/0, delete/1, set_key/2, get_key/1, notify_manager_shutdown/1]).
 -export([add_client/2, reconnect_client/2, client_set_name/2, client_select_role/2, client_commit_role/2, client_is_hacker/1]).
--export([set_terminal_pid/2, hacker_list_lasers/1]).
+-export([set_terminal_pid/2, hacker_list_lasers/1, hacker_configure_laser/4]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2]).
 
 -record(clientinfo, {
@@ -61,10 +61,9 @@ client_is_hacker(Pid) -> gen_server:call(Pid, client_is_hacker).
 
 set_terminal_pid(Pid, Terminal) -> gen_server:call(Pid, {set_terminal_pid, Terminal}).
 hacker_list_lasers(Pid) -> gen_server:call(Pid, hacker_list_lasers).
+hacker_configure_laser(Pid, Name, Enabled, Interval) -> gen_server:call(Pid, {hacker_configure_laser, Name, Enabled, Interval}).
 
 operative_move_location({0, 0}) -> self(), ok.
-
-hacker_configure_laser(<<"las0">>, false, 0) -> self(), ok.
 
 %% Server
 
@@ -151,6 +150,17 @@ handle_call_roll(hacker, _, hacker_list_lasers, State) ->
     {reply, {ok, State#gamestate.map#map.lasers}, State};
 
 handle_call_roll(_, _, hacker_list_lasers, State) ->
+    {reply, {error, not_hacker}, State};
+
+handle_call_roll(hacker, _, {hacker_configure_laser, Name, Enabled, Interval}, State) ->
+    NewLasers = [(case Laser of
+        #laser{name = Name} -> Laser#laser{enabled = Enabled, interval = Interval};
+        _ -> Laser
+    end) || Laser <- State#gamestate.map#map.lasers],
+    NewMap = State#gamestate.map#map{lasers = NewLasers},
+    {reply, ok, State#gamestate{map = NewMap}};
+
+handle_call_roll(_, _, {hacker_configure_laser, _, _, _}, State) ->
     {reply, {error, not_hacker}, State}.
 
 handle_info(connect_manager, State) ->
