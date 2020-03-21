@@ -144,34 +144,57 @@ int websocket_data_available(int socket)
 
 int websocket_read_next_packet(int socket, unsigned char **buf, int *len)
 {
-    int l;
+    unsigned long long l = 0;
     int err = _ws_loop_read(socket, (char*)websocket_buffer, 2, 0);
     if (err == SOCKET_ERROR) {
         return -1;
     }
-    if (websocket_buffer[1] > 125) {
-        return -2; // TODO: fix
+    if (websocket_buffer[1] & 0x80) {
+        return -2; // fatal according to RFC 6455
     }
-    switch (websocket_buffer[0]) {
-    case 0x88:
-        return -3;
-    case 0x81:
-        err = _ws_loop_read(socket, (char*)websocket_buffer, websocket_buffer[1], 0);
+    switch (websocket_buffer[1]) {
+    case 126:
+        err = _ws_loop_read(socket, (char*)websocket_buffer + 2, 2, 0);
+        if (err == SOCKET_ERROR) {
+            return -3;
+        }
+        l = websocket_buffer[2] << 8 | websocket_buffer[3];
+        break;
+    case 127:
+        if (sizeof(l) != 8) {
+            return -128;
+        }
+        err = _ws_loop_read(socket, (char*)&l, 8, 0);
         if (err == SOCKET_ERROR) {
             return -4;
         }
+        l = ntohll(l);
+        if (l > sizeof(websocket_buffer)) {
+            return -5;
+        }
+        break;
+    default:
+        l = websocket_buffer[1];
+    }
+    switch (websocket_buffer[0]) {
+    case 0x88:
+        return -6;
+    case 0x81:
+        err = _ws_loop_read(socket, (char*)websocket_buffer, l, 0);
+        if (err == SOCKET_ERROR) {
+            return -7;
+        }
         return 0;
     case 0x82:
-        l = websocket_buffer[1];
-        err = _ws_loop_read(socket, (char*)websocket_buffer, websocket_buffer[1], 0);
+        err = _ws_loop_read(socket, (char*)websocket_buffer, l, 0);
         if (err == SOCKET_ERROR) {
-            return -5;
+            return -8;
         }
         *buf = websocket_buffer;
         *len = l;
         return 1;
     default:
-        return -6; // TODO: fix
+        return -9; // TODO: fix
     }
 }
 
