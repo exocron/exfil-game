@@ -26,7 +26,7 @@ const char http_request[] = "GET /join HTTP/1.1\r\n"
 
 const char http_response[] = "HTTP/1.1 101 "; // hacky
 
-const char _ws_game_join_1[] = "\x81\xB5\x00\x00\x00\x00{\"code\":\"";
+const char _ws_game_join_1[] = "{\"code\":\"";
 const char _ws_game_join_2[] = "\",\"token\":\"";
 const char _ws_game_join_3[] = "\"}";
 
@@ -110,25 +110,36 @@ int websocket_connect(int socket)
 
 int websocket_authenticate(int socket)
 {
-    int err = _ws_loop_write(socket, _ws_game_join_1, sizeof(_ws_game_join_1) - 1, 0);
-    if (err == SOCKET_ERROR) {
-        return -1;
+    size_t len_code = strlen(websocket_game_code);
+    size_t len_token = strlen(websocket_game_token);
+    size_t len = sizeof(_ws_game_join_1) + sizeof(_ws_game_join_2) + sizeof(_ws_game_join_3) - 3 + len_code + len_token;
+    if (len > 125) {
+        return -1; // TODO: fix
     }
-    err = _ws_loop_write(socket, websocket_game_code, 9, 0);
+    char header[6] = {0x81, 0x80 | (char)len, 0, 0, 0, 0};
+    int err = _ws_loop_write(socket, header, sizeof(header), 0);
     if (err == SOCKET_ERROR) {
         return -2;
     }
-    err = _ws_loop_write(socket, _ws_game_join_2, sizeof(_ws_game_join_2) - 1, 0);
+    err = _ws_loop_write(socket, _ws_game_join_1, sizeof(_ws_game_join_1) - 1, 0);
     if (err == SOCKET_ERROR) {
         return -3;
     }
-    err = _ws_loop_write(socket, websocket_game_token, 22, 0);
+    err = _ws_loop_write(socket, websocket_game_code, len_code, 0);
     if (err == SOCKET_ERROR) {
         return -4;
     }
-    err = _ws_loop_write(socket, _ws_game_join_3, sizeof(_ws_game_join_3) - 1, 0);
+    err = _ws_loop_write(socket, _ws_game_join_2, sizeof(_ws_game_join_2) - 1, 0);
     if (err == SOCKET_ERROR) {
         return -5;
+    }
+    err = _ws_loop_write(socket, websocket_game_token, len_token, 0);
+    if (err == SOCKET_ERROR) {
+        return -6;
+    }
+    err = _ws_loop_write(socket, _ws_game_join_3, sizeof(_ws_game_join_3) - 1, 0);
+    if (err == SOCKET_ERROR) {
+        return -7;
     }
     return 0;
 }
