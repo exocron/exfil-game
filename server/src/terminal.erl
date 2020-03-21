@@ -27,13 +27,16 @@ handle_cast({input, <<>>}, State) ->
 
 handle_cast({input, Text}, State) ->
     Lines = string:lexemes(Text, "\n"),
-    [run_command(State#state.client, parse_command(Line)) || Line <- Lines],
+    [run_command(State, parse_command(Line)) || Line <- Lines],
     {noreply, State}.
 
 parse_command(Line) ->
     [Cmd | Args] = string:lexemes(Line, " \t\r\v\f"),
     AtomCmd = case normalize_command_name(Cmd) of
+        <<"dir">> -> list_commands;
+        <<"ls">> -> list_commands;
         <<"lcontrol">> -> lcontrol;
+        <<"exit">> -> exit;
         _ -> unknown
     end,
     [AtomCmd, Cmd | Args].
@@ -54,23 +57,40 @@ normalize_command_name_2(Cmd) ->
         _ -> Cmd
     end.
 
-run_command(Pid, []) ->
-    Pid ! {output, <<"C:\\>">>};
+run_command(State, []) ->
+    State#state.client ! {output, <<"C:\\>">>};
 
-run_command(Pid, [AtomCmd, Cmd | Args]) ->
+run_command(State, [AtomCmd, Cmd | Args]) ->
     case lists:any(fun(X) -> X =:= <<"--help">> orelse X =:= <<"/?">> end, Args) of
-        true -> print_help(Pid, AtomCmd, Cmd);
-        _ -> run_command(Pid, AtomCmd, Cmd, Args)
+        true -> print_help(State, AtomCmd, Cmd);
+        _ -> run_command(State, AtomCmd, Cmd, Args)
     end.
 
-run_command(Pid, lcontrol, _, Args) ->
-    Pid ! {output, <<"\nHi\n\nC:\\>">>};
+run_command(State, list_commands, _, _) ->
+    State#state.client ! {output, <<
+        " Volume in drive C is SPEC-74D3\n"
+        " Volume Serial Number is 74D3-5437\n"
+        "\n"
+        " Directory of C:\\\n"
+        "\n"
+        "03/14/20  07:22 PM            68,577 lcontrol.exe\n"
+        "               1 File(s)         68,577 bytes\n"
+        "               0 Dir(s)     243,928,320 bytes free\n"
+        "\n"
+        "C:\\>"
+    >>};
 
-run_command(Pid, _, Cmd, _) ->
-    Pid ! {output, <<"'", Cmd/binary, "' is not recognized as an internal or external command,\noperable program or batch file.\n\nC:\\>">>}.
+run_command(State, lcontrol, _, _) ->
+    State#state.client ! {output, <<"\nHi\n\nC:\\>">>};
 
-print_help(Pid, lcontrol, _) ->
-    Pid ! {output, <<
+run_command(State, exit, _, _) ->
+    State#state.client ! {output, <<"\x1b[2J\x1b[HConnection forcibly closed by remote host.\n">>};
+
+run_command(State, _, Cmd, _) ->
+    State#state.client ! {output, <<"'", Cmd/binary, "' is not recognized as an internal or external command,\noperable program or batch file.\n\nC:\\>">>}.
+
+print_help(State, lcontrol, _) ->
+    State#state.client ! {output, <<
         "Laser Control Module version 2.14\n"
         "Copyright (C) 2015-2020 Quantum Security, Inc\n"
 
@@ -82,4 +102,7 @@ print_help(Pid, lcontrol, _) ->
         "                            0 = no pulse\n"
         "\n"
         "C:\\>"
-    >>}.
+    >>};
+
+print_help(State, AtomCmd, Cmd) ->
+    run_command(State, AtomCmd, Cmd, []).
