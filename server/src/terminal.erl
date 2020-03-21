@@ -10,24 +10,25 @@
 -module(terminal).
 -behaviour(gen_server).
 
--export([start_link/0, send_input/2, init/1, handle_cast/2]).
+-export([start_link/1, send_input/2, init/1, handle_cast/2]).
+-record(state, {client, game}).
 
-start_link() -> gen_server:start_link(terminal, self(), []).
+start_link(Game) -> gen_server:start_link(terminal, #state{client = self(), game = Game}, []).
 
 send_input(Pid, Input) -> gen_server:cast(Pid, {input, Input}).
 
-init(Pid) ->
-    Pid ! {output, <<"QS-DOS 3.13.0\nCopyright (C) 2010-2012 Quantum Softworks, Inc.\n\nC:\\>">>},
-    {ok, Pid}.
+init(State) ->
+    State#state.client ! {output, <<"QS-DOS 3.13.0\nCopyright (C) 2010-2012 Quantum Softworks, Inc.\n\nC:\\>">>},
+    {ok, State}.
 
-handle_cast({input, <<>>}, Pid) ->
-    Pid ! {output, <<"C:\\>">>},
-    {noreply, Pid};
+handle_cast({input, <<>>}, State) ->
+    State#state.client ! {output, <<"C:\\>">>},
+    {noreply, State};
 
-handle_cast({input, Text}, Pid) ->
+handle_cast({input, Text}, State) ->
     Lines = string:lexemes(Text, "\n"),
-    [run_command(Pid, parse_command(Line)) || Line <- Lines],
-    {noreply, Pid}.
+    [run_command(State#state.client, parse_command(Line)) || Line <- Lines],
+    {noreply, State}.
 
 parse_command(Line) ->
     [Cmd | Args] = string:lexemes(Line, " \t\r\v\f"),
