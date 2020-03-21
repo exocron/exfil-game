@@ -78,6 +78,7 @@ websocket_info(maybe_create_terminal, {game, Pid}) ->
     case game:client_is_hacker(Pid) of
         true ->
             {ok, TermPid} = terminal:start_link(Pid),
+            game:set_terminal_pid(Pid, TermPid),
             {ok, {terminal, TermPid}};
         _ ->
             {ok, {game, Pid}}

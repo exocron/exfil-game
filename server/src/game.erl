@@ -12,6 +12,7 @@
 
 -export([new/0, delete/1, set_key/2, get_key/1, notify_manager_shutdown/1]).
 -export([add_client/2, reconnect_client/2, client_set_name/2, client_select_role/2, client_commit_role/2, client_is_hacker/1]).
+-export([set_terminal_pid/2, hacker_list_lasers/1]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2]).
 
 -record(clientinfo, {
@@ -26,8 +27,21 @@
     key = nil,
     client1 = nil,
     client2 = nil,
-    state = pregame
+    state = pregame,
+    map = nil
 }).
+
+-define(update_hacker_client(State, Params), ((fun() ->
+    OldClient = get_hacker_client(State),
+    NewClient = OldClient#clientinfo Params,
+    set_hacker_client(State, NewClient)
+end)())).
+
+-define(update_operative_client(State, Params), ((fun() ->
+    OldClient = get_operative_client(State),
+    NewClient = OldClient#clientinfo Params,
+    set_operative_client(State, NewClient)
+end)())).
 
 new() -> gen_server:start(game, [], []).
 delete(Pid) -> gen_server:stop(Pid).
@@ -42,6 +56,9 @@ client_set_name(Pid, Name) -> gen_server:call(Pid, {client_set_name, Name}).
 client_select_role(Pid, Role) -> gen_server:call(Pid, {client_select_role, Role}).
 client_commit_role(Pid, Bool) -> gen_server:call(Pid, {client_commit_role, Bool}).
 client_is_hacker(Pid) -> gen_server:call(Pid, client_is_hacker).
+
+set_terminal_pid(Pid, Terminal) -> gen_server:call(Pid, {set_terminal_pid, Terminal}).
+hacker_list_lasers(Pid) -> gen_server:call(Pid, hacker_list_lasers).
 
 operative_move_location({0, 0}) -> self(), ok.
 
@@ -107,14 +124,32 @@ handle_call_client(Client, {client_commit_role, Bool}, State) when State#gamesta
 handle_call_client(_, {client_commit_role, _}, State) ->
     {reply, {error, game_started}, State};
 
-handle_call_client(client1, client_is_hacker, State) when State#gamestate.state =:= started andalso State#gamestate.client1#clientinfo.role =:= hacker ->
+handle_call_client(_, client_is_hacker, State) when State#gamestate.state =/= started ->
+    {reply, false, State};
+
+handle_call_client(client1, Request, State) when State#gamestate.state =:= started ->
+    handle_call_roll(State#gamestate.client1#clientinfo.role, client1, Request, State);
+
+handle_call_client(client2, Request, State) when State#gamestate.state =:= started ->
+    handle_call_roll(State#gamestate.client2#clientinfo.role, client2, Request, State).
+
+handle_call_roll(hacker, _, client_is_hacker, State) ->
     {reply, true, State};
 
-handle_call_client(client2, client_is_hacker, State) when State#gamestate.state =:= started andalso State#gamestate.client2#clientinfo.role =:= hacker ->
-    {reply, true, State};
+handle_call_roll(_, _, client_is_hacker, State) ->
+    {reply, false, State};
 
-handle_call_client(_, client_is_hacker, State) ->
-    {reply, false, State}.
+handle_call_roll(hacker, _, {set_terminal_pid, Terminal}, State) ->
+    {reply, ok, ?update_hacker_client(State, {pid = Terminal})};
+
+handle_call_roll(_, _, {set_terminal_pid, _}, State) ->
+    {reply, {error, not_hacker}, State};
+
+handle_call_roll(hacker, _, hacker_list_lasers, State) ->
+    {reply, {ok, [<<"las0">>]}, State};
+
+handle_call_roll(_, _, hacker_list_lasers, State) ->
+    {reply, {error, not_hacker}, State}.
 
 handle_info(connect_manager, State) ->
     case game_manager:add_game(self(), State#gamestate.key) of
@@ -237,3 +272,27 @@ maybe_start_game(State) when State#gamestate.client1#clientinfo.commit_role =:= 
 
 maybe_start_game(State) ->
     State.
+
+get_hacker_client(State) when State#gamestate.client1#clientinfo.role =:= hacker ->
+    State#gamestate.client1;
+
+get_hacker_client(State) when State#gamestate.client2#clientinfo.role =:= hacker ->
+    State#gamestate.client2.
+
+get_operative_client(State) when State#gamestate.client1#clientinfo.role =:= operative ->
+    State#gamestate.client1;
+
+get_operative_client(State) when State#gamestate.client2#clientinfo.role =:= operative ->
+    State#gamestate.client2.
+
+set_hacker_client(State, Client) when State#gamestate.client1#clientinfo.role =:= hacker ->
+    State#gamestate{client1 = Client};
+
+set_hacker_client(State, Client) when State#gamestate.client2#clientinfo.role =:= hacker ->
+    State#gamestate{client2 = Client}.
+
+set_operative_client(State, Client) when State#gamestate.client1#clientinfo.role =:= operative ->
+    State#gamestate{client1 = Client};
+
+set_operative_client(State, Client) when State#gamestate.client2#clientinfo.role =:= operative ->
+    State#gamestate{client2 = Client}.
