@@ -229,6 +229,10 @@ maybe_reconnect_client_1(State, Pid, Ref, nil, C2) ->
 
 maybe_reconnect_client_1(State, Pid, Ref, C1, _) when C1#clientinfo.ref == Ref ->
     NewClient = C1#clientinfo{pid = Pid},
+    case State#gamestate.state of
+        started -> Pid ! game_is_starting;
+        _ -> ok
+    end,
     {reply, ok, State#gamestate{client1 = NewClient}};
 
 maybe_reconnect_client_1(State, Pid, Ref, _, C2) ->
@@ -239,6 +243,10 @@ maybe_reconnect_client_2(State, _, _, nil) ->
 
 maybe_reconnect_client_2(State, Pid, Ref, C2) when C2#clientinfo.ref == Ref ->
     NewClient = C2#clientinfo{pid = Pid},
+    case State#gamestate.state of
+        started -> Pid ! game_is_starting;
+        _ -> ok
+    end,
     {reply, ok, State#gamestate{client2 = NewClient}};
 
 maybe_reconnect_client_2(State, _, _, _) ->
