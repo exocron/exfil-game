@@ -1,7 +1,20 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://testlevel.gd" type="Script" id=1]
 [ext_resource path="res://testlevel.png" type="Texture" id=2]
+
+[sub_resource type="RectangleShape2D" id=5]
+extents = Vector2( 256, 2 )
+
+[sub_resource type="Gradient" id=2]
+colors = PoolColorArray( 0, 1, 0, 1, 0, 1, 0, 1 )
+
+[sub_resource type="GradientTexture" id=3]
+gradient = SubResource( 2 )
+width = 1
+
+[sub_resource type="RectangleShape2D" id=4]
+extents = Vector2( 14, 14 )
 
 [node name="testlevel" type="Node2D"]
 script = ExtResource( 1 )
@@ -12,10 +25,30 @@ texture = ExtResource( 2 )
 centered = false
 offset = Vector2( -256, -256 )
 
-[node name="Camera2D" type="Camera2D" parent="level_texture"]
+[node name="camera_full" type="Camera2D" parent="level_texture"]
 current = true
 
-[node name="las0" type="Line2D" parent="."]
-points = PoolVector2Array( 0, 304, 512, 304 )
+[node name="las0" type="Line2D" parent="." groups=[
+"hazard",
+]]
+position = Vector2( 256, 304 )
+points = PoolVector2Array( -256, 0, 256, 0 )
 width = 4.0
 default_color = Color( 1, 0, 0, 1 )
+
+[node name="Area2D" type="Area2D" parent="las0"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="las0/Area2D"]
+shape = SubResource( 5 )
+
+[node name="player" type="Sprite" parent="."]
+position = Vector2( 112, 400 )
+scale = Vector2( 32, 32 )
+texture = SubResource( 3 )
+
+[node name="Area2D" type="Area2D" parent="player"]
+scale = Vector2( 0.031, 0.031 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="player/Area2D"]
+shape = SubResource( 4 )
+[connection signal="area_entered" from="player/Area2D" to="." method="_on_Area2D_area_entered"]
