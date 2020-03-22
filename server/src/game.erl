@@ -154,7 +154,10 @@ handle_call_roll(_, _, hacker_list_lasers, State) ->
 
 handle_call_roll(hacker, _, {hacker_configure_laser, Name, Enabled, Interval}, State) ->
     NewLasers = [(case Laser of
-        #laser{name = Name} -> Laser#laser{enabled = Enabled, interval = Interval};
+        #laser{name = Name} ->
+            NewLaser = Laser#laser{enabled = Enabled, interval = Interval},
+            notify_operative(State, {game_object_changed, NewLaser}),
+            NewLaser;
         _ -> Laser
     end) || Laser <- State#gamestate.map#map.lasers],
     NewMap = State#gamestate.map#map{lasers = NewLasers},
@@ -316,3 +319,9 @@ set_operative_client(State, Client) when State#gamestate.client1#clientinfo.role
 
 set_operative_client(State, Client) when State#gamestate.client2#clientinfo.role =:= operative ->
     State#gamestate{client2 = Client}.
+
+notify_operative(State, Msg) when State#gamestate.client1#clientinfo.role =:= operative ->
+    State#gamestate.client1#clientinfo.pid ! Msg;
+
+notify_operative(State, Msg) when State#gamestate.client2#clientinfo.role =:= operative ->
+    State#gamestate.client2#clientinfo.pid ! Msg.

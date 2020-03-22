@@ -15,6 +15,7 @@ var role: String setget _role_set, _role_get
 
 signal peer_role_changed(peer_role)
 signal peer_ready(ready)
+signal game_object_changed(object)
 
 func _ready():
 	ws_connect()
@@ -76,6 +77,8 @@ func _dispatchActions(action, data):
 		else:
 			_state = "game_start"
 			get_tree().change_scene("res://testlevel.tscn")
+	if action == "objectchange":
+		emit_signal("game_object_changed", data["object"])
 
 func _process(delta):
 	_ws.poll()

@@ -74,6 +74,12 @@ websocket_info(game_is_starting, {game, Pid}) ->
     JSON = jiffy:encode(#{action => <<"statechange">>, newstate => <<"game_start">>}),
     {[{text, JSON}], {game, Pid}};
 
+websocket_info({game_object_changed, Object}, {game, Pid}) ->
+    Type = element(1, Object),
+    MapObject = (map:object_to_map(Object))#{type => Type},
+    JSON = jiffy:encode(#{action => <<"objectchange">>, object => MapObject}),
+    {[{text, JSON}], {game, Pid}};
+
 websocket_info(maybe_create_terminal, {game, Pid}) ->
     case game:client_is_hacker(Pid) of
         true ->
