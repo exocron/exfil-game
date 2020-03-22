@@ -12,10 +12,19 @@
 
 -export([start_link/0, get_cookie/1, get_ref/1, init/1, handle_call/3]).
 
+-ifdef(rad).
+-export([set_dbg_hacker_ref/1, set_dbg_operative_ref/1]).
+-endif.
+
 start_link() -> gen_server:start_link({local, cookiejar}, cookiejar, [], []).
 
 get_cookie(Ref) -> gen_server:call(cookiejar, {get_cookie, Ref}).
 get_ref(Cookie) -> gen_server:call(cookiejar, {get_ref, Cookie}).
+
+-ifdef(rad).
+set_dbg_hacker_ref(Ref) -> gen_server:call(cookiejar, {set_dbg_hacker_ref, Ref}).
+set_dbg_operative_ref(Ref) -> gen_server:call(cookiejar, {set_dbg_operative_ref, Ref}).
+-endif.
 
 %% Server
 
@@ -36,7 +45,17 @@ handle_call({get_ref, Cookie}, _, []) ->
     case ets:lookup(cookie_ref, Cookie) of
         [{Cookie, Ref}] -> {reply, {ok, Ref}, []};
         _ -> {reply, {error, invalid_cookie}, []}
-    end.
+    end;
+
+handle_call({set_dbg_hacker_ref, Ref}, _, []) ->
+    true = ets:insert(ref_cookie, {Ref, <<"h">>}),
+    true = ets:insert(cookie_ref, {<<"h">>, Ref}),
+    {reply, ok, []};
+
+handle_call({set_dbg_operative_ref, Ref}, _, []) ->
+    true = ets:insert(ref_cookie, {Ref, <<"o">>}),
+    true = ets:insert(cookie_ref, {<<"o">>, Ref}),
+    {reply, ok, []}.
 
 handle_new_cookie(_, _, false, false) ->
     {reply, {error, insert_cookie}, []};

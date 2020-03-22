@@ -21,9 +21,39 @@ find_game(Key) -> gen_server:call(game_manager, {find_game, Key}).
 
 %% Server
 
+-ifdef(rad).
+dbg_loop() ->
+    receive
+        _ -> dbg_loop()
+    end.
+-define(rad_init(),
+    {ok, Game} = game:new(),
+    ok = game:set_key(Game, <<"h">>),
+    spawn_link(fun() ->
+        {ok, Ref} = game:add_client(Game, self()),
+        cookiejar:set_dbg_hacker_ref(Ref),
+        game:client_select_role(Game, hacker),
+        game:client_commit_role(Game, true),
+        dbg_loop()
+    end),
+    spawn_link(fun() ->
+        {ok, Ref} = game:add_client(Game, self()),
+        cookiejar:set_dbg_operative_ref(Ref),
+        game:client_select_role(Game, operative),
+        game:client_commit_role(Game, true),
+        dbg_loop()
+    end),
+    true = ets:insert_new(game_tbl, {<<"h">>, Game}),
+    true = ets:insert_new(game_rev, {Game, <<"h">>})
+).
+-else.
+-define(rad_init(), []).
+-endif.
+
 init(_) ->
     ets:new(game_tbl, [named_table]),
     ets:new(game_rev, [named_table]),
+    ?rad_init(),
     {ok, []}.
 
 handle_call(add_game, From, []) ->
